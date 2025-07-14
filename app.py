@@ -7,7 +7,9 @@ from src.models.ContasPagar import ContasPagar
 from src.models.Atendimentos import Atendimentos
 from src.utils.input_db_generics import input_db
 from src.utils.pdf_extract import extract_pdf
+import asyncio
 
+# --- APP PRINCIPAL ---
 st.header("Hello")
 
 SELECT_BOX_OPTIONS = [
@@ -49,11 +51,14 @@ PROCESSADORES = {
     'Stone': processar_stone,
 }
 
+async def executar_processamento(categoria, df_extracted, unidade):
+    await asyncio.to_thread(PROCESSADORES[categoria], df_extracted, unidade)
+
 if st.button("Enviar"):
     if categoria in SELECT_BOX_OPTIONS and dados is not None:
         try:
             df_extracted = extract_pdf(dados)
-            PROCESSADORES[categoria](df_extracted, unidade)
+            asyncio.run(executar_processamento(categoria, df_extracted, unidade))
             st.success(f"{categoria} processada com sucesso!")
         except Exception as e:
             st.error(f"Erro ao processar {categoria}: {e}")
