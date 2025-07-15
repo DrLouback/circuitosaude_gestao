@@ -8,6 +8,10 @@ from src.models.Atendimentos import Atendimentos
 from src.utils.input_db_generics import input_db
 from src.utils.pdf_extract import extract_pdf
 import asyncio
+import pandas as pd
+from src.transformers.StoneTransformer import StoneTransformer
+from src.models.Stone import Stone
+
 
 # --- APP PRINCIPAL ---
 st.header("Hello")
@@ -40,8 +44,10 @@ def processar_atendimentos(df, unidade):
 def processar_chatbot(df, unidade):
     st.info("Funcionalidade de ChatBot ainda não implementada.")
 
-def processar_stone(df, unidade):
-    st.info("Funcionalidade de Stone ainda não implementada.")
+def processar_stone(df: pd.DataFrame, unidade):
+    print(df.columns)
+    transformer = StoneTransformer(df, unidade)
+    input_db(transformer.dataframe(), Stone)
 
 PROCESSADORES = {
     'Contas a receber': processar_contas_receber,
@@ -57,7 +63,10 @@ async def executar_processamento(categoria, df_extracted, unidade):
 if st.button("Enviar"):
     if categoria in SELECT_BOX_OPTIONS and dados is not None:
         try:
-            df_extracted = extract_pdf(dados)
+            if categoria != "Stone":
+                df_extracted = extract_pdf(dados)
+            else:
+                df_extracted = pd.read_csv(dados, sep=';')
             asyncio.run(executar_processamento(categoria, df_extracted, unidade))
             st.success(f"{categoria} processada com sucesso!")
         except Exception as e:
