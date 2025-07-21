@@ -6,7 +6,7 @@ class Stone(Base):
     __tablename__ = 'stone'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     documento: Mapped[str] = mapped_column(String)
-    stonecode: Mapped[str] = mapped_column(String)
+    stonecode: Mapped[str] = mapped_column(String, unique= True)
     fantasia: Mapped[str] = mapped_column(String)
     categoria: Mapped[str] = mapped_column(String)
     data_venda: Mapped[DateTime] = mapped_column(DateTime, nullable=True)

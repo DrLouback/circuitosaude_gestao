@@ -1,2 +1,7 @@
 .venv
 .env
+temp_atendimentos.csv
+temp_contas_receber.csv
+temp_stone.csv
+temp_contas_pagar.csv
+

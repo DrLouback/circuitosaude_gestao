@@ -12,10 +12,6 @@ import pandas as pd
 from src.transformers.StoneTransformer import StoneTransformer
 from src.models.Stone import Stone
 
-
-# --- APP PRINCIPAL ---
-st.header("Hello")
-
 SELECT_BOX_OPTIONS = [
     'Contas a receber',
     'Contas a pagar',
@@ -67,8 +63,12 @@ if st.button("Enviar"):
                 df_extracted = extract_pdf(dados)
             else:
                 df_extracted = pd.read_csv(dados, sep=';')
-            asyncio.run(executar_processamento(categoria, df_extracted, unidade))
+
+            with st.spinner("Processando..."):
+                asyncio.run(executar_processamento(categoria, df_extracted, unidade))
+                
             st.success(f"{categoria} processada com sucesso!")
+            
         except Exception as e:
             st.error(f"Erro ao processar {categoria}: {e}")
     else:
