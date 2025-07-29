@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 class AtendimentosTransformer:
     def __init__(self, df: pd.DataFrame, unidade):
         self.df = df.copy()
@@ -33,3 +34,4 @@ class AtendimentosTransformer:
     def extrair_data_de_data_hora(self):
         # Cria/atualiza a coluna 'data' extraindo apenas a data de 'data_hora'
         self.df['data'] = pd.to_datetime(self.df['Data/Hora'], errors='coerce', dayfirst=True).dt.date
+

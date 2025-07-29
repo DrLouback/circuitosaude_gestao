@@ -1,6 +1,7 @@
 import pandas as pd 
 import os
 from src.utils.date_utils import add_month_pagamento, add_month_recebimento
+import numpy as np
 
 class ContasReceberTransformer():
     def __init__(self, df: pd.DataFrame, unity):
@@ -13,6 +14,8 @@ class ContasReceberTransformer():
         self.add_month_payment()
         self.add_month_receivement()
         self.convert_collumn_value()
+        self.extrair_telefone()
+        self.limpar_nome_cliente()
 
     def dataframe(self):
         self.df = self.df[~self.df['numero'].astype(str).str.contains("Total", na=False)]
@@ -49,7 +52,23 @@ class ContasReceberTransformer():
                     'data_pagamento','data_recebimento','situacao','valor']
     
 
-    
+    def extrair_telefone(self):
+        self.df['telefone'] = np.where(
+        self.df['cliente'].str.contains('Tel'),
+        self.df['cliente'].str.split(':').str[1].str.split('Dados').str[0],
+            ''
+        )
+        self.df['telefone'] = self.df['telefone'].apply(lambda x: str(x).replace('(','').replace(')','').replace('-','').replace(' ','').strip())
+        return self.df
+
+    def limpar_nome_cliente(self):
+        self.df['cliente'] = np.where(
+        self.df['cliente'].str.contains('Tel'),
+        self.df['cliente'].str.split(':').str[0],
+        self.df['cliente'].str.split('Dados').str[0]
+        )
+        self.df['cliente'] = self.df['cliente'].apply(lambda x: str(x).replace('Tel.','').strip())
+        return self.df
 
 
 
