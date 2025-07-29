@@ -27,15 +27,15 @@ dados = st.file_uploader("Escolha um arquivo", type=["pdf", "xlsx", 'xls', 'csv'
 
 def processar_contas_receber(df, unidade):
     transformer = ContasReceberTransformer(df, unidade)
-    input_db(transformer.dataframe(), ContasReceber)
+    input_db(transformer.dataframe(), ContasReceber, conflict_column='numero')
 
 def processar_contas_pagar(df, unidade):
     transformer = ContasPagarTransformer(df, unidade)
-    input_db(transformer.dataframe(), ContasPagar)
+    input_db(transformer.dataframe(), ContasPagar, conflict_column='numero')
 
 def processar_atendimentos(df, unidade):
     transformer = AtendimentosTransformer(df, unidade)
-    input_db(transformer.dataframe(), Atendimentos)
+    input_db(transformer.dataframe(), Atendimentos, conflict_column='id_atendimento')
 
 def processar_chatbot(df, unidade):
     st.info("Funcionalidade de ChatBot ainda não implementada.")

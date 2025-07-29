@@ -14,4 +14,5 @@ class Atendimentos(Base):
     obs: Mapped[str] = mapped_column(String, nullable=True)
     data: Mapped[DateTime] = mapped_column(DateTime)
     unidade: Mapped[str] = mapped_column(String)
+    id_atendimento: Mapped[str] = mapped_column(String, unique= True)
     
