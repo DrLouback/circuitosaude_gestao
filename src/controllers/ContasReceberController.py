@@ -37,6 +37,8 @@ def gerar_devedores_json():
     df = filtrar_vencidas(df)
     df= limpar_data(df)
     return gerar_json_devedores(df)
+
+
     
 
 

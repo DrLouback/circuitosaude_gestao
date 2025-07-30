@@ -8,3 +8,4 @@ sqlalchemy
 python-dotenv
 sqlalchemy[asyncio] 
 asyncpg
+psycopg2-binary>=2.9
