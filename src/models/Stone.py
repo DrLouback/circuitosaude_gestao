@@ -6,7 +6,7 @@ class Stone(Base):
     __tablename__ = 'stone'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     documento: Mapped[str] = mapped_column(String)
-    stonecode: Mapped[str] = mapped_column(String, unique= True)
+    stonecode: Mapped[str] = mapped_column(String)
     fantasia: Mapped[str] = mapped_column(String)
     categoria: Mapped[str] = mapped_column(String)
     data_venda: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
@@ -14,7 +14,7 @@ class Stone(Base):
     vencimento_original: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     bandeira: Mapped[str] = mapped_column(String)
     produto: Mapped[str] = mapped_column(String)
-    stone_id: Mapped[str] = mapped_column(String)
+    stone_id: Mapped[str] = mapped_column(String, unique = True)
     qntd_parcelas: Mapped[int] = mapped_column(Integer)
     parcela: Mapped[int] = mapped_column(Integer)
     valor_bruto: Mapped[DECIMAL] = mapped_column(DECIMAL)
