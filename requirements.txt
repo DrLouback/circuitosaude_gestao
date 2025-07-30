@@ -1,0 +1,5 @@
+pdfplumber
+pandas
+streamlit
+xlrd==2.0.1
+xlsxwriter==3.2.5
