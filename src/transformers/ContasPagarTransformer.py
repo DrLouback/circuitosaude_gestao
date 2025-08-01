@@ -11,6 +11,7 @@ class ContasPagarTransformer:
         self.remove_last_line()
         self.add_month_payment()
         self.convert_collumn_value()
+        self.add_id_conta_pagar()
 
     def dataframe(self):
         self.df = self.df[~self.df['numero'].astype(str).str.contains("Total", na=False)]
@@ -43,6 +44,9 @@ class ContasPagarTransformer:
         # Formata as colunas de data para o formato correto (dayfirst=True)
         for col in ['data_vencimento', 'data_pagamento']:
             self.df[col] = pd.to_datetime(self.df[col], errors='coerce', dayfirst=True)
+
+    def add_id_conta_pagar(self):
+        self.df['id_conta_pagar'] = self.df['numero'].astype(str) + self.df['unidade'].astype(str)
 
 if __name__ == '__main__':
     pass

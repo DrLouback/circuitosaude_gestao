@@ -7,7 +7,7 @@ class ContasReceber(Base):
     __tablename__ = 'contas_receber'
     id: Mapped[int] = mapped_column(primary_key= True)
     index: Mapped[int] = mapped_column(Integer)
-    numero: Mapped[int] = mapped_column(Integer, unique=True)
+    numero: Mapped[int] = mapped_column(Integer)
     cliente: Mapped[str] = mapped_column(String)
     cpf: Mapped[str] = mapped_column(String, nullable=True)
     centro_de_custo: Mapped[str] = mapped_column(String, nullable= True)
@@ -22,3 +22,4 @@ class ContasReceber(Base):
     mes_pagamento: Mapped[int] = mapped_column(Integer, nullable=True)
     mes_recebimento: Mapped[int] = mapped_column(Integer, nullable=True)
     telefone: Mapped[str] = mapped_column(String, nullable= True)
+    id_conta_receber: Mapped[str] = mapped_column(String, unique=True)

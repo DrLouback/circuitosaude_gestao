@@ -2,7 +2,7 @@ import pandas as pd
 
 class StoneTransformer:
     def __init__(self, df: pd.DataFrame, unidade):
-        self.df = df.copy()
+        self.df =  df.drop('DESCONTO UNIFICADO', axis=1) if 'DESCONTO UNIFICADO' in df.columns else df
         self.df.columns = [col.upper().strip() for col in self.df.columns]  # Padroniza para maiúsculas
         self.renomear_colunas()  # Renomeia para nomes internos
         self.unidade = unidade
@@ -12,8 +12,10 @@ class StoneTransformer:
         self.add_month_venda()
         self.add_month_vencimento()
         self.convert_colunas_valor()
+        self.add_id_stone_unidade()
 
     def dataframe(self):
+        
         return self.df
 
     def add_unidade(self):
@@ -57,13 +59,19 @@ class StoneTransformer:
 
     def renomear_colunas(self):
         # Renomeia as 20 colunas do arquivo para nomes internos
+        
         self.df.columns = [
             'documento', 'stonecode', 'fantasia', 'categoria',
             'data_venda', 'data_vencimento', 'vencimento_original', 'bandeira',
             'produto', 'stone_id', 'qntd_parcelas', 'parcela', 'valor_bruto',
-            'valor_liquido', 'desconto', 'antecipacao', 'cartao', 'status',
+            'valor_liquido', 'desconto','antecipacao', 'cartao', 'status',
             'data_status', 'chave'
         ]
+
+     
+
+    def add_id_stone_unidade(self):
+        self.df['id_stone_unidade'] = self.df['stone_id'].astype(str) + self.df['unidade']
 
 if __name__ == '__main__':
     pass

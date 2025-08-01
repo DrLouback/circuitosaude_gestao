@@ -5,62 +5,49 @@ import numpy as np
 
 
 unidade = st.selectbox("Selecione unidade", ['MOK','Shopping'])
+stone = pd.read_sql(f"Select * from stone where unidade = '{unidade}'", engine)
 contas_receber = pd.read_sql(f"Select * from contas_receber  where unidade = '{unidade}'", engine)
 meses = ['Sem filtro']
 meses_unicos = contas_receber['mes_pagamento'].dropna().unique()
 meses += sorted([str(int(m)) for m in meses_unicos if pd.notnull(m)])
+
+
 
 #mes = st.selectbox('Mês', meses)
 
 
 contas_pagas = contas_receber[contas_receber['situacao'] == 'Paga']
 contas_abertas = contas_receber[contas_receber['situacao'] == 'Aberta']
-#
-#if mes != "Sem filtro":
-#    contas_pagas = contas_receber[(contas_receber['situacao'] == 'Paga') & 
-#                                  (contas_receber['mes_pagamento'] == int(mes))]
-#    
-#    contas_abertas = contas_receber[(contas_receber['situacao'] == 'Aberta') & 
-#                                    (pd.to_datetime(contas_receber['data_vencimento'])
-#                                    .dt.month == int(mes))]
 
+cartoes_stone = stone[['data_venda','data_vencimento','valor_bruto']]
+pagamentos_seufisio = contas_pagas[~contas_pagas['forma'].isin(['Cartão de crédito','Cartão de débito'])]
 
-
-#valor_pago = contas_pagas['valor'].sum()
-#valor_aberto = contas_abertas['valor'].sum()
-
-#st.write(f'Valor pago: R${valor_pago:.2f}')
-#st.write(f'Valor aberto: R${valor_aberto:.2f}')
 
 # RECEBIMENTOS
 contas_receber['mes_pagamento'] = contas_receber['mes_pagamento'].dropna().astype(int)
-pivot_recebimentos = contas_receber.pivot_table(
-    index=[],
-    columns='mes_pagamento',
-    values='valor',
-    aggfunc='sum',
-    fill_value=0
-)
-
-pivot_recebimentos.index = pd.Index(['Recebido'])
-# Opcional: coloca um nome para a linha
-#st.write('Recebimentos')
-#st.dataframe(pivot_recebimentos)
-#st.divider()
-
-#FLUXO REAL
-contas_receber['mes_recebimento'] = contas_receber['mes_recebimento'].dropna().astype(int)
-pivot_fluxo_real = contas_receber.pivot_table(
+pivot_recebimentos = pagamentos_seufisio.pivot_table(
     index=[],
     columns='mes_recebimento',
     values='valor',
     aggfunc='sum',
     fill_value=0
 )
-#st.write('Fluxo real de entradas')
-#st.dataframe(pivot_fluxo_real)
-#st.divider()
 
+pivot_recebimentos.index = pd.Index(['Recebido'])
+
+
+pivot_stone = stone.pivot_table(
+    index=[],
+    columns='mes_vencimento',
+    values='valor_liquido',
+    aggfunc='sum',
+    fill_value=0
+)
+pivot_stone.rename(columns={'valor_liquido':'valor', 'mes_vencimento':'mes_pagamento'})
+pivot_stone.index = pd.Index(['Recebido'])
+
+
+concat_stone_seufisio = pivot_stone + pivot_recebimentos
 
 
 # ALUNOS
@@ -88,12 +75,9 @@ pivot_contas_pagar = contas_pagar.pivot_table(
     aggfunc='sum',
     fill_value=0
 )
-#st.write('Saídas')
-#st.dataframe(pivot_contas_pagar)
-#st.divider()
-# Garante que os dois DataFrames tenham as mesmas colunas (meses)
+
 todos_meses = sorted(set(pivot_recebimentos.columns).union(set(pivot_contas_pagar.columns)))
-pivot_recebimentos = pivot_recebimentos.reindex(columns=todos_meses, fill_value=0)
+pivot_recebimentos = concat_stone_seufisio.reindex(columns=todos_meses, fill_value=0)
 pivot_contas_pagar = pivot_contas_pagar.reindex(columns=todos_meses, fill_value=0)
 
 # Calcula o lucro/saldo por mês
@@ -101,7 +85,7 @@ lucro = pivot_recebimentos.values - pivot_contas_pagar.values
 
 # Cria um novo DataFrame com Recebido, Saídas e Lucro
 df_fluxo = pd.DataFrame(
-    data = np.vstack([pivot_recebimentos.values, pivot_contas_pagar.values, lucro]),
+    data = np.vstack([concat_stone_seufisio.values, pivot_contas_pagar.values, lucro]),
     index = ['Recebido', 'Saídas', 'Lucro'],
     columns = todos_meses
 )
@@ -111,24 +95,6 @@ st.write('Fluxo consolidado (Recebido, Saídas, Lucro)')
 st.dataframe(df_fluxo)
 
 
-# Garante que pivot_fluxo_real e pivot_contas_pagar tenham as mesmas colunas (meses)
-todos_meses_real = sorted(set(pivot_fluxo_real.columns).union(set(pivot_contas_pagar.columns)))
-pivot_fluxo_real = pivot_fluxo_real.reindex(columns=todos_meses_real, fill_value=0)
-pivot_contas_pagar_real = pivot_contas_pagar.reindex(columns=todos_meses_real, fill_value=0)
-
-# Calcula o saldo real por mês
-saldo_real = pivot_fluxo_real.values - pivot_contas_pagar_real.values
-
-# Cria um novo DataFrame com Entradas Reais, Saídas e Saldo Real
-df_fluxo_real = pd.DataFrame(
-    data = np.vstack([pivot_fluxo_real.values, pivot_contas_pagar_real.values, saldo_real]),
-    index = ['Entradas Reais', 'Saídas', 'Saldo Real'],
-    columns = todos_meses_real
-)
-df_fluxo_real['Total'] = df_fluxo_real.sum(axis=1)
-
-st.write('Fluxo Real consolidado (Entradas Reais, Saídas, Saldo Real)')
-st.dataframe(df_fluxo_real)
 
 # Calcula a diferença percentual mês a mês (exceto a coluna 'Total')
 df_percent = df_fluxo.iloc[:, :-1].pct_change(axis=1) * 100

@@ -16,6 +16,7 @@ class ContasReceberTransformer():
         self.convert_collumn_value()
         self.extrair_telefone()
         self.limpar_nome_cliente()
+        self.add_id_conta_recer()
 
     def dataframe(self):
         self.df = self.df[~self.df['numero'].astype(str).str.contains("Total", na=False)]
@@ -70,7 +71,8 @@ class ContasReceberTransformer():
         self.df['cliente'] = self.df['cliente'].apply(lambda x: str(x).replace('Tel.','').strip())
         return self.df
 
-
+    def add_id_conta_recer(self):
+        self.df['id_conta_receber'] = self.df['numero'].astype(str) + self.df['unidade'].astype(str)
 
 if __name__ == '__main__':
     pass

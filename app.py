@@ -27,15 +27,15 @@ dados = st.file_uploader("Escolha um arquivo", type=["pdf", "xlsx", 'xls', 'csv'
 
 def processar_contas_receber(df, unidade):
     transformer = ContasReceberTransformer(df, unidade)
-    input_db(transformer.dataframe(), ContasReceber, conflict_column='numero')
+    input_db(transformer.dataframe(), ContasReceber, conflict_column='id_conta_receber')
 
 def processar_contas_pagar(df, unidade):
     transformer = ContasPagarTransformer(df, unidade)
-    input_db(transformer.dataframe(), ContasPagar, conflict_column='numero')
+    input_db(transformer.dataframe(), ContasPagar, conflict_column='id_conta_pagar')
 
 def processar_atendimentos(df, unidade):
     transformer = AtendimentosTransformer(df, unidade)
-    input_db(transformer.dataframe(), Atendimentos, conflict_column='id_atendimento')
+    input_db(transformer.dataframe(), Atendimentos, conflict_column='')
 
 def processar_chatbot(df, unidade):
     st.info("Funcionalidade de ChatBot ainda não implementada.")
@@ -43,7 +43,7 @@ def processar_chatbot(df, unidade):
 def processar_stone(df: pd.DataFrame, unidade):
     print(df.columns)
     transformer = StoneTransformer(df, unidade)
-    input_db(transformer.dataframe(), Stone)
+    input_db(transformer.dataframe(), Stone, conflict_column='id_stone_unidade')
 
 PROCESSADORES = {
     'Contas a receber': processar_contas_receber,
@@ -62,7 +62,10 @@ if st.button("Enviar"):
             if categoria != "Stone":
                 df_extracted = extract_pdf(dados)
             else:
-                df_extracted = pd.read_csv(dados, sep=';')
+                try:
+                    df_extracted = pd.read_excel(dados)
+                except:
+                    df_extracted = pd.read_csv(dados, sep= ';')
 
             with st.spinner("Processando..."):
                 asyncio.run(executar_processamento(categoria, df_extracted, unidade))

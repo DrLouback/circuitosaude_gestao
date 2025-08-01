@@ -35,16 +35,21 @@ st.write(f'Diferença: R$ {valor_seufisio_conciliado - valor_stone_conciliado:.2
 
 
 st.divider()
-
-st.title('Não conciliados')
 nao_conciliados = pd.merge(stone, contas, on= 'stone_id', how='outer')
-nao_conciliados = nao_conciliados[~nao_conciliados['stone_id'].isin(conciliados['stone_id'])]
-nao_conciliados = nao_conciliados[nao_conciliados['forma'].isin(['Cartão de crédito','Cartão de débito', 'Débito em conta'])]
+st.title('Não conciliados')
+
+nao_conciliados = nao_conciliados[nao_conciliados['cliente'].isnull()]  
 nao_conciliados['Conf. Valor'] = np.where(nao_conciliados['valor_bruto'] == nao_conciliados['valor'], "✅", "❌")
 
 nao_conciliados['Conf. Data'] = np.where(pd.to_datetime(nao_conciliados['data_venda']).dt.date == pd.to_datetime(nao_conciliados['data_pagamento']).dt.date, "✅", "❌")
-nao_conciliados['Cartão já utilizado'] = np.where(nao_conciliados['cartao'].isin(conciliados['cartao']), "✅", "❌")
-st.dataframe(nao_conciliados[['cartao','stone_id','cliente','cpf','forma','valor_bruto','valor','Conf. Valor', "data_venda","data_pagamento","Conf. Data",'Cartão já utilizado']].fillna(''))
+nao_conciliados['Cartão já utilizado'] = np.where(
+    nao_conciliados['cartao'].isin(conciliados['cartao']),
+    "✅",
+    "❌"
+)
+
+resumo_nao_conciliado = nao_conciliados[['cartao','stone_id','cliente','cpf','forma','valor_bruto','valor','Conf. Valor', "data_venda","data_pagamento","Conf. Data",'Cartão já utilizado']].copy()
+st.dataframe(resumo_nao_conciliado.fillna('').drop_duplicates())
 
 valor_stone_nao_conciliado = nao_conciliados['valor_bruto'].sum()
 valor_seufisio_nao_conciliado = nao_conciliados['valor'].sum()

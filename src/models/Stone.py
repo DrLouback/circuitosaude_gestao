@@ -14,7 +14,7 @@ class Stone(Base):
     vencimento_original: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     bandeira: Mapped[str] = mapped_column(String)
     produto: Mapped[str] = mapped_column(String)
-    stone_id: Mapped[str] = mapped_column(String, unique = True)
+    stone_id: Mapped[str] = mapped_column(String)
     qntd_parcelas: Mapped[int] = mapped_column(Integer)
     parcela: Mapped[int] = mapped_column(Integer)
     valor_bruto: Mapped[DECIMAL] = mapped_column(DECIMAL)
@@ -28,3 +28,4 @@ class Stone(Base):
     unidade: Mapped[str] = mapped_column(String)
     mes_venda: Mapped[int] = mapped_column(Integer, nullable=True)
     mes_vencimento: Mapped[int] = mapped_column(Integer, nullable=True)
+    id_stone_unidade:Mapped[str] = mapped_column(String, unique = True)
