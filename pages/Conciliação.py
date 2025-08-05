@@ -4,59 +4,95 @@ from src.db.db import engine
 import numpy as np
 
 unidade = st.selectbox("Unidade", ['MOK','Shopping'])
+mes = st.selectbox('Mes', [1,2,3,4,5,6,7,8,9,10,11,12])
 
 
-contas = pd.read_sql(f"Select * from contas_receber where situacao = 'Paga' AND unidade = '{unidade}'", engine)
-stone = pd.read_sql(f"Select * from stone where unidade = '{unidade}'", engine)
-contas.rename(columns={'cod_transacao':'stone_id'},inplace= True)
-stone['stone_id'] = stone['stone_id'].apply(lambda x: str(x).replace(".0", ''))
-#st.dataframe(contas)
-#st.dataframe(stone)
+conciliados = pd.read_sql_query("""with stone_limpo as (SELECT id, documento, stonecode, fantasia, categoria, data_venda, data_vencimento, vencimento_original, bandeira, produto, REGEXP_REPLACE(stone_id, '\\.0$', '') AS stone_id, qntd_parcelas, parcela, valor_bruto, valor_liquido, desconto, antecipacao, cartao, status, data_status, chave, unidade, mes_venda, mes_vencimento, id_stone_unidade
+	FROM public.stone)
+	SELECT
+         b.cartao, 
+        b.stone_id,
+		a.unidade as unidade_seufisio,
+        a.cliente,
+        a.cpf,
+		b.data_venda as data_stone,
+		a.data_pagamento as data_seufisio,
+		b.valor_bruto as valor_stone,
+		a.valor as valor_seufisio,
+		b.valor_liquido
+	FROM stone_limpo b
+	left join contas_receber a
+	on b.stone_id = a.cod_transacao
+	where a.cod_transacao is not null;
+	""", engine)
 
 
-st.title('Conciliados')
-conciliados = pd.merge(stone, contas, on= 'stone_id').fillna('')
-conciliados['Conf. Valor'] = np.where(conciliados['valor_bruto'] == conciliados['valor'], "✅", "❌")
+conciliados['Conf. Valor'] = np.where(conciliados['valor_stone'] == conciliados['valor_seufisio'], "✅", "❌")
 
-conciliados['Conf. Data'] = np.where(pd.to_datetime(conciliados['data_venda']).dt.date == pd.to_datetime(conciliados['data_pagamento']).dt.date, "✅", "❌")
+conciliados['Conf. Data'] = np.where(pd.to_datetime(conciliados['data_stone']).dt.date == pd.to_datetime(conciliados['data_seufisio']).dt.date, "✅", "❌")
 
-resumo_conciliados = conciliados[['cartao','stone_id','cliente','cpf','forma','valor_bruto','valor','Conf. Valor', "data_venda","data_pagamento","Conf. Data"]]
+nao_conciliado_seufisio = pd.read_sql_query("""WITH stone_limpo AS (
+  SELECT 
+    REGEXP_REPLACE(stone_id, '\\.0$', '') AS stone_id
+  FROM public.stone
+)
+
+select a.stone_id as id_stone,
+b.cod_transacao as id_seufisio,
+b.valor,
+b.cliente,
+b.data_pagamento as "data pagamento no SeuFisio",
+b.forma,
+b.unidade
+from stone_limpo a
+right join contas_receber b
+on a.stone_id = b.cod_transacao 
+where a.stone_id is null
+and b.forma in ('Cartão de crédito','Cartão de débito');
+ """, engine)
 
 
-st.dataframe(resumo_conciliados)
+nao_conciliados_stone = pd.read_sql_query("""with stone_limpo as (SELECT id, documento, stonecode, fantasia, categoria, data_venda, data_vencimento, vencimento_original, bandeira, produto, REGEXP_REPLACE(stone_id, '\\.0$', '') AS stone_id, qntd_parcelas, parcela, valor_bruto, valor_liquido, desconto, antecipacao, cartao, status, data_status, chave, unidade, mes_venda, mes_vencimento, id_stone_unidade
+	FROM public.stone)
+	SELECT
+         b.cartao, 
+        b.stone_id,
+		b.unidade as unidade,
+		b.data_venda as data_stone,
+		b.valor_bruto as valor_stone,
+		b.valor_liquido
+	FROM stone_limpo b
+	left join contas_receber a
+	on b.stone_id = a.cod_transacao
+	where a.cod_transacao is null;
+	""", engine)
 
-valor_stone_conciliado = conciliados['valor_bruto'].sum()
-valor_seufisio_conciliado = conciliados['valor'].sum()
-
-st.write(f'Valor conciliado SeuFisio: R$ {valor_seufisio_conciliado:.2f}') 
-st.write(f'Valor conciliado Stone: R$ {valor_stone_conciliado:.2f}')
-
-st.write(f'Diferença: R$ {valor_seufisio_conciliado - valor_stone_conciliado:.2f}')
-
-
-st.divider()
-nao_conciliados = pd.merge(stone, contas, on= 'stone_id', how='outer')
-st.title('Não conciliados')
-
-nao_conciliados = nao_conciliados[nao_conciliados['cliente'].isnull()]  
-nao_conciliados['Conf. Valor'] = np.where(nao_conciliados['valor_bruto'] == nao_conciliados['valor'], "✅", "❌")
-
-nao_conciliados['Conf. Data'] = np.where(pd.to_datetime(nao_conciliados['data_venda']).dt.date == pd.to_datetime(nao_conciliados['data_pagamento']).dt.date, "✅", "❌")
-nao_conciliados['Cartão já utilizado'] = np.where(
-    nao_conciliados['cartao'].isin(conciliados['cartao']),
+nao_conciliados_stone['Cartão já utilizado'] = np.where(
+    nao_conciliados_stone['cartao'].isin(conciliados['cartao']),
     "✅",
     "❌"
 )
 
-resumo_nao_conciliado = nao_conciliados[['cartao','stone_id','cliente','cpf','forma','valor_bruto','valor','Conf. Valor', "data_venda","data_pagamento","Conf. Data",'Cartão já utilizado']].copy()
-st.dataframe(resumo_nao_conciliado.fillna('').drop_duplicates())
+conciliados = conciliados[conciliados['unidade_seufisio'] == f'{unidade}']
+nao_conciliado_seufisio = nao_conciliado_seufisio[nao_conciliado_seufisio['unidade'] == f'{unidade}']
+nao_conciliados_stone = nao_conciliados_stone[nao_conciliados_stone['unidade'] == f'{unidade}']
 
-valor_stone_nao_conciliado = nao_conciliados['valor_bruto'].sum()
-valor_seufisio_nao_conciliado = nao_conciliados['valor'].sum()
+conciliados['mes'] = pd.to_datetime(conciliados['data_stone']).dt.month
+conciliados = conciliados[conciliados['mes'] == mes]
 
-st.write(f'Valor não conciliado SeuFisio: R$ {valor_seufisio_nao_conciliado:.2f}') 
-st.write(f'Valor não conciliado Stone: R$ {valor_stone_nao_conciliado:.2f}')
+nao_conciliado_seufisio['mes'] = pd.to_datetime(nao_conciliado_seufisio['data pagamento no SeuFisio']).dt.month
+nao_conciliado_seufisio = nao_conciliado_seufisio[nao_conciliado_seufisio['mes'] == mes]
 
-st.write(f'Diferença: R$ {valor_seufisio_nao_conciliado - valor_stone_nao_conciliado:.2f}')
+nao_conciliados_stone['mes'] = pd.to_datetime(nao_conciliados_stone['data_stone']).dt.month
+nao_conciliados_stone = nao_conciliados_stone[nao_conciliados_stone['mes'] == mes]
 
-st.divider()
+
+st.title("Pagamentos Concilidados")
+st.dataframe(conciliados)
+
+st.header('Pagamentos do SeuFisio não encontrados na Stone')
+st.dataframe(nao_conciliado_seufisio)
+
+
+st.header('Pagamentos da Stone não encontrados no SeuFisio')
+st.dataframe(nao_conciliados_stone)
