@@ -9,3 +9,4 @@ python-dotenv
 sqlalchemy[asyncio] 
 asyncpg
 psycopg2-binary>=2.9
+xlsxwriter==3.2.5

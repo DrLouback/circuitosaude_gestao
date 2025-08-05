@@ -2,9 +2,10 @@ import pandas as pd
 import streamlit as st
 from src.db.db import engine
 import numpy as np
+from io import BytesIO
 
 unidade = st.selectbox("Unidade", ['MOK','Shopping'])
-mes = st.selectbox('Mes', [1,2,3,4,5,6,7,8,9,10,11,12])
+mes = st.selectbox('Mes', [4,5,6,7,8,9,10,11,12])
 
 
 conciliados = pd.read_sql_query("""with stone_limpo as (SELECT id, documento, stonecode, fantasia, categoria, data_venda, data_vencimento, vencimento_original, bandeira, produto, REGEXP_REPLACE(stone_id, '\\.0$', '') AS stone_id, qntd_parcelas, parcela, valor_bruto, valor_liquido, desconto, antecipacao, cartao, status, data_status, chave, unidade, mes_venda, mes_vencimento, id_stone_unidade
@@ -17,6 +18,7 @@ conciliados = pd.read_sql_query("""with stone_limpo as (SELECT id, documento, st
         a.cpf,
 		b.data_venda as data_stone,
 		a.data_pagamento as data_seufisio,
+        b.produto,
 		b.valor_bruto as valor_stone,
 		a.valor as valor_seufisio,
 		b.valor_liquido
@@ -59,6 +61,7 @@ nao_conciliados_stone = pd.read_sql_query("""with stone_limpo as (SELECT id, doc
         b.stone_id,
 		b.unidade as unidade,
 		b.data_venda as data_stone,
+		b.produto,
 		b.valor_bruto as valor_stone,
 		b.valor_liquido
 	FROM stone_limpo b
@@ -86,9 +89,23 @@ nao_conciliado_seufisio = nao_conciliado_seufisio[nao_conciliado_seufisio['mes']
 nao_conciliados_stone['mes'] = pd.to_datetime(nao_conciliados_stone['data_stone']).dt.month
 nao_conciliados_stone = nao_conciliados_stone[nao_conciliados_stone['mes'] == mes]
 
+@st.cache_data
+def converter_xlsx(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
+def baixar_arquivo(df, mes):
+    df = converter_xlsx(df)
+    st.download_button("Download", data= df, file_name=f'Conciliados_{mes}.xlsx')
+
+ #type: ignore
 
 st.title("Pagamentos Concilidados")
 st.dataframe(conciliados)
+if unidade is not None:
+    baixar_arquivo(conciliados, mes)
 
 st.header('Pagamentos do SeuFisio não encontrados na Stone')
 st.dataframe(nao_conciliado_seufisio)
@@ -96,3 +113,8 @@ st.dataframe(nao_conciliado_seufisio)
 
 st.header('Pagamentos da Stone não encontrados no SeuFisio')
 st.dataframe(nao_conciliados_stone)
+
+st.divider()
+st.write(f"Total conciliado: {conciliados['valor_seufisio'].sum():.2f}")
+st.write(f'Do SeuFisio faltam {nao_conciliado_seufisio['valor'].sum():.2f}')
+st.write(f'Da Stone faltam {nao_conciliados_stone['valor_stone'].sum():.2f}')
