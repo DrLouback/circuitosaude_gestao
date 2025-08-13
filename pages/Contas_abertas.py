@@ -60,8 +60,9 @@ if bt_enviar:
             raise Exception('Erro ao enviar mensagem: Unidade MOK')
     
 log = pd.read_sql('Select * from log_envio_mensagem order by data_envio desc limit 1', engine)
-if log['status'].iloc[0] == True:
-    data_envio = pd.to_datetime(log["data_envio"].iloc[0])
-    st.success(f'Último envio realizado em: {data_envio.strftime("%d/%m/%Y às %H:%M")}')
-     
+if log.empty == False:
+    if log['status'].iloc[0] == True:
+        data_envio = pd.to_datetime(log["data_envio"].iloc[0])
+        st.success(f'Último envio realizado em: {data_envio.strftime("%d/%m/%Y às %H:%M")}')
+        
         
