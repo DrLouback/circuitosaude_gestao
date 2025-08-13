@@ -1,30 +1,47 @@
 import streamlit as st
 import pandas as pd
-from src.db.db import engine
 import numpy as np
+from src.db.db import engine
 
 
-unidade = st.selectbox("Selecione unidade", ['MOK','Shopping'])
-stone = pd.read_sql(f"Select * from stone where unidade = '{unidade}'", engine)
-contas_receber = pd.read_sql(f"Select * from contas_receber  where unidade = '{unidade}'", engine)
+# ------------------------------
+# Seleção da unidade
+# ------------------------------
+unidade = st.selectbox("Selecione unidade", ['MOK', 'Shopping'])
+
+# ------------------------------
+# Leitura de dados
+# ------------------------------
+stone = pd.read_sql(f"SELECT * FROM stone WHERE unidade = '{unidade}'", engine)
+contas_receber = pd.read_sql(f"SELECT * FROM contas_receber WHERE unidade = '{unidade}'", engine)
+
+# ------------------------------
+# Filtro de meses
+# ------------------------------
 meses = ['Sem filtro']
 meses_unicos = contas_receber['mes_pagamento'].dropna().unique()
 meses += sorted([str(int(m)) for m in meses_unicos if pd.notnull(m)])
+# mes = st.selectbox('Mês', meses)
 
-
-
-#mes = st.selectbox('Mês', meses)
-
-
+# ------------------------------
+# Separação de contas pagas e abertas
+# ------------------------------
 contas_pagas = contas_receber[contas_receber['situacao'] == 'Paga']
 contas_abertas = contas_receber[contas_receber['situacao'] == 'Aberta']
 
-cartoes_stone = stone[['data_venda','data_vencimento','valor_bruto']]
-pagamentos_seufisio = contas_pagas[~contas_pagas['forma'].isin(['Cartão de crédito','Cartão de débito'])]
+# ------------------------------
+# Cartões e pagamentos SeuFisio
+# ------------------------------
+cartoes_stone = stone[['data_venda', 'data_vencimento', 'valor_bruto']]
+pagamentos_seufisio = contas_pagas[
+    ~contas_pagas['forma'].isin(['Cartão de crédito', 'Cartão de débito'])
+]
 
-
+# ------------------------------
 # RECEBIMENTOS
+# ------------------------------
 contas_receber['mes_pagamento'] = contas_receber['mes_pagamento'].dropna().astype(int)
+
 pivot_recebimentos = pagamentos_seufisio.pivot_table(
     index=[],
     columns='mes_recebimento',
@@ -32,9 +49,7 @@ pivot_recebimentos = pagamentos_seufisio.pivot_table(
     aggfunc='sum',
     fill_value=0
 )
-
 pivot_recebimentos.index = pd.Index(['Recebido'])
-
 
 pivot_stone = stone.pivot_table(
     index=[],
@@ -43,31 +58,29 @@ pivot_stone = stone.pivot_table(
     aggfunc='sum',
     fill_value=0
 )
-pivot_stone.rename(columns={'valor_liquido':'valor', 'mes_vencimento':'mes_pagamento'})
+pivot_stone.rename(columns={'valor_liquido': 'valor', 'mes_vencimento': 'mes_pagamento'})
 pivot_stone.index = pd.Index(['Recebido'])
-
 
 concat_stone_seufisio = pivot_stone + pivot_recebimentos
 
-
+# ------------------------------
 # ALUNOS
+# ------------------------------
 pivot_alunos = contas_pagas.groupby('mes_pagamento')['cliente'].nunique().reset_index()
-
-# Transpõe para que cada coluna seja um mês e o valor seja a quantidade de alunos
 pivot_alunos = pivot_alunos.set_index('mes_pagamento').T
-
-# Opcional: renomeia a linha
 pivot_alunos.index = pd.Index(['Quantidade de alunos'])
 
 st.write('Quantidade de alunos')
 st.dataframe(pivot_alunos)
 
+# ------------------------------
+# CONTAS A PAGAR
+# ------------------------------
 st.divider()
-contas_pagar = pd.read_sql(f"Select * from contas_pagar where unidade = '{unidade}'", engine)
+contas_pagar = pd.read_sql(f"SELECT * FROM contas_pagar WHERE unidade = '{unidade}'", engine)
 contas_pagar['titulo'] = contas_pagar['titulo'].str.replace(r"\s*\(.*?\)", "", regex=True).str.strip()
-
-
 contas_pagar['mes_pagamento'] = contas_pagar['mes_pagamento'].dropna().astype(int)
+
 pivot_contas_pagar = contas_pagar.pivot_table(
     index=[],
     columns='mes_pagamento',
@@ -76,48 +89,35 @@ pivot_contas_pagar = contas_pagar.pivot_table(
     fill_value=0
 )
 
+# ------------------------------
+# FLUXO CONSOLIDADO
+# ------------------------------
 todos_meses = sorted(set(pivot_recebimentos.columns).union(set(pivot_contas_pagar.columns)))
 pivot_recebimentos = concat_stone_seufisio.reindex(columns=todos_meses, fill_value=0)
 pivot_contas_pagar = pivot_contas_pagar.reindex(columns=todos_meses, fill_value=0)
 
-# Calcula o lucro/saldo por mês
 lucro = pivot_recebimentos.values - pivot_contas_pagar.values
 
-# Cria um novo DataFrame com Recebido, Saídas e Lucro
 df_fluxo = pd.DataFrame(
-    data = np.vstack([concat_stone_seufisio.values, pivot_contas_pagar.values, lucro]),
-    index = ['Recebido', 'Saídas', 'Lucro'],
-    columns = todos_meses
+    data=np.vstack([concat_stone_seufisio.values, pivot_contas_pagar.values, lucro]),
+    index=['Recebido', 'Saídas', 'Lucro'],
+    columns=todos_meses
 )
 df_fluxo['Total'] = df_fluxo.sum(axis=1)
 
-st.write('Fluxo consolidado (Recebido, Saídas, Lucro)')
+st.write('Fluxo Real de Entradas por mês')
 st.dataframe(df_fluxo)
 
-###################################
-
-
-
-
-# Calcula a diferença percentual mês a mês (exceto a coluna 'Total')
+# ------------------------------
+# DIFERENÇA PERCENTUAL MÊS A MÊS
+# ------------------------------
 df_percent = df_fluxo.iloc[:, :-1].pct_change(axis=1) * 100
 df_percent = df_percent.round(2)
-
-
-
-# Ajusta os nomes das linhas para indicar que é percentual
 df_percent.index = pd.Index([f"{idx} (%)" for idx in df_fluxo.index])
 
-# Junta ao DataFrame original para exibir juntos (opcional)
-
-
-
-
-
-# Garante que mes_pagamento é inteiro
-contas_pagar['mes_pagamento'] = contas_pagar['mes_pagamento'].astype(int)
-
-# Cria a tabela dinâmica: linhas = titulo, colunas = mes_pagamento, valores = soma dos gastos
+# ------------------------------
+# GASTOS POR TÍTULO
+# ------------------------------
 pivot_titulos = contas_pagar.pivot_table(
     index='titulo',
     columns='mes_pagamento',
@@ -125,21 +125,70 @@ pivot_titulos = contas_pagar.pivot_table(
     aggfunc='sum',
     fill_value=0
 )
-
-# (Opcional) Adiciona uma coluna de total por título
 pivot_titulos['Total'] = pivot_titulos.sum(axis=1)
-
-# (Opcional) Adiciona uma linha de total por mês
 pivot_titulos.loc['Total'] = pivot_titulos.sum(axis=0)
 
-#st.write('Gastos por título e mês')
-#st.dataframe(pivot_titulos)
-
-# Calcula a diferença absoluta mês a mês para cada título (ignora a coluna 'Total' e a linha 'Total')
+# ------------------------------
+# DIFERENÇA ABSOLUTA DE GASTOS
+# ------------------------------
 pivot_titulos_diff = pivot_titulos.drop('Total', errors='ignore').iloc[:, :-1].diff(axis=1).fillna(0)
-
-# (Opcional) Adiciona uma linha de total das diferenças por mês
 pivot_titulos_diff.loc['Total'] = pivot_titulos_diff.sum(axis=0)
 
 st.write('Diferença absoluta de gastos por título e mês (mês atual - mês anterior)')
 st.dataframe(pivot_titulos_diff)
+
+
+# ------------------------------
+# Faturamentos
+# ------------------------------
+contas_receber['mes_pagamento'] = contas_receber['mes_pagamento'].dropna().astype(int)
+
+pivot_faturamentos = pagamentos_seufisio.pivot_table(
+    index=[],
+    columns='mes_pagamento',
+    values='valor',
+    aggfunc='sum',
+    fill_value=0
+)
+pivot_faturamentos.index = pd.Index(['Recebido'])
+
+pivot_stone = stone.pivot_table(
+    index=[],
+    columns='mes_venda',
+    values='valor_liquido',
+    aggfunc='sum',
+    fill_value=0
+)
+pivot_stone.rename(columns={'valor_liquido': 'valor', 'mes_vencimento': 'mes_pagamento'})
+pivot_stone.index = pd.Index(['Recebido'])
+
+faturamento = pivot_stone + pivot_faturamentos
+
+# ------------------------------
+# FATURAMENTO CONSOLIDADO
+# ------------------------------
+todos_meses = sorted(set(pivot_faturamentos.columns).union(set(pivot_contas_pagar.columns)))
+pivot_faturamentos = faturamento.reindex(columns=todos_meses, fill_value=0)
+pivot_contas_pagar = pivot_contas_pagar.reindex(columns=todos_meses, fill_value=0)
+
+lucro = pivot_faturamentos.values - pivot_contas_pagar.values
+
+df_faturamento = pd.DataFrame(
+    data=np.vstack([pivot_faturamentos.values, pivot_contas_pagar.values, lucro]),
+    index=['Recebido', 'Saídas', 'Lucro'],
+    columns=todos_meses
+)
+df_faturamento['Total'] = df_faturamento.sum(axis=1)
+
+st.write('Faturamento')
+st.dataframe(df_faturamento)
+
+print("Alunos por mês considerando alunos pagantes")
+print(pivot_alunos)
+print("Fluxo considerando entradas como mês que entrou dinheiro na conta")
+print(df_fluxo)
+print("Faturamento considerando entradas como mês de venda")
+print(df_faturamento)
+print("Diferença de gastos por títulos em relação ao mês anterior")
+print(pivot_titulos_diff)
+
