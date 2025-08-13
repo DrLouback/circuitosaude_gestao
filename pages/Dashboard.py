@@ -66,8 +66,13 @@ concat_stone_seufisio = pivot_stone + pivot_recebimentos
 # ------------------------------
 # ALUNOS
 # ------------------------------
-pivot_alunos = contas_pagas.groupby('mes_pagamento')['cliente'].nunique().reset_index()
-pivot_alunos = pivot_alunos.set_index('mes_pagamento').T
+alunos = pd.read_sql_query(f""" SELECT UPPER(TRIM(unaccent(cliente)))  AS clientes,
+           *,
+           EXTRACT(MONTH FROM data_vencimento) AS mes
+    FROM contas_receber
+    where unidade = '{unidade}'""", engine)
+pivot_alunos = alunos.groupby('mes')['cliente'].nunique().reset_index()
+pivot_alunos = pivot_alunos.set_index('mes').T
 pivot_alunos.index = pd.Index(['Quantidade de alunos'])
 
 st.write('Quantidade de alunos')
