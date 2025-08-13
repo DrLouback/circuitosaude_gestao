@@ -94,6 +94,9 @@ df_fluxo['Total'] = df_fluxo.sum(axis=1)
 st.write('Fluxo consolidado (Recebido, Saídas, Lucro)')
 st.dataframe(df_fluxo)
 
+###################################
+
+
 
 
 # Calcula a diferença percentual mês a mês (exceto a coluna 'Total')
@@ -108,8 +111,7 @@ df_percent.index = pd.Index([f"{idx} (%)" for idx in df_fluxo.index])
 # Junta ao DataFrame original para exibir juntos (opcional)
 
 
-st.write('Fluxo consolidado (Recebido, Saídas, Lucro) com variação percentual')
-st.dataframe(df_percent)
+
 
 
 # Garante que mes_pagamento é inteiro
