@@ -10,7 +10,7 @@ where "Cliente" in (Select "Cliente" from atendimentos where "Tipo Atendimento" 
 and "Tipo Atendimento" = 'Pilates Experimental' and unidade = '{unidade}'
 
 """, engine)
-experimentais_matriculadas = pd.read_sql(""" WITH primeira_ocorrencia AS (
+experimentais_matriculadas = pd.read_sql(f""" WITH primeira_ocorrencia AS (
     SELECT 
         "Cliente",
         "Tipo Atendimento",
@@ -34,7 +34,7 @@ SELECT
     data,
     unidade
 FROM primeira_ocorrencia
-WHERE rn = 1;""", engine)
+WHERE rn = 1 and unidade = '{unidade}';""", engine)
 
 delay_matricula = pd.read_sql(f"""WITH experimental AS (
     SELECT 
