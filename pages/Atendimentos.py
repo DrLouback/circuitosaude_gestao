@@ -5,12 +5,25 @@ from src.db.db import engine
 unidade = st.selectbox("Unidade", ['MOK', 'Shopping'])
 mes = st.selectbox("Mês", [1,2,3,4,5,6,7,8,9,10,11,12])
 
-experimentais = pd.read_sql(f"""Select DISTINCT "Cliente", "Tipo Atendimento", data, unidade from atendimentos
-where "Cliente" in (Select "Cliente" from atendimentos where "Tipo Atendimento" = 'Pilates Experimental')
-and "Tipo Atendimento" = 'Pilates Experimental' and unidade = '{unidade}'
+experimentais = pd.read_sql(f"""SELECT DISTINCT 
+    "Cliente", 
+    "Tipo Atendimento", 
+    data, 
+    EXTRACT(MONTH FROM data) AS mes,   -- 🔹 coluna mês
+    unidade
+FROM atendimentos
+WHERE "Cliente" IN (
+    SELECT "Cliente" 
+    FROM atendimentos 
+    WHERE "Tipo Atendimento" = 'Pilates Experimental'
+)
+AND "Tipo Atendimento" = 'Pilates Experimental'
+AND unidade = '{unidade}'
+AND EXTRACT(MONTH FROM data) = {mes}   -- 🔹 filtro por mês
+ORDER BY data;
 
 """, engine)
-experimentais_matriculadas = pd.read_sql(f""" WITH primeira_ocorrencia AS (
+experimentais_matriculadas = pd.read_sql(f"""WITH primeira_ocorrencia AS (
     SELECT 
         "Cliente",
         "Tipo Atendimento",
@@ -32,9 +45,13 @@ SELECT
     "Cliente",
     "Tipo Atendimento",
     data,
+    EXTRACT(MONTH FROM data) AS mes,   -- 🔹 coluna mês
     unidade
 FROM primeira_ocorrencia
-WHERE rn = 1 and unidade = '{unidade}';""", engine)
+WHERE rn = 1 
+  AND unidade = '{unidade}'
+  AND EXTRACT(MONTH FROM data) = {mes}   -- 🔹 filtro por mês
+ORDER BY data; ;""", engine)
 
 delay_matricula = pd.read_sql(f"""WITH experimental AS (
     SELECT 
@@ -76,12 +93,12 @@ group by
 "Cliente", "Profissional", "Status", "Tipo Atendimento", unidade
 order by quantidade desc  """, engine)
 
-ex_alunos = pd.read_sql(f"""  WITH meses AS (
+ex_alunos = pd.read_sql(f""" WITH meses AS (
     SELECT 
         UPPER(TRIM(unaccent(cliente))) AS cliente,
         EXTRACT(MONTH FROM data_vencimento) AS mes,
         EXTRACT(YEAR FROM data_vencimento) AS ano,
-                        unidade
+        unidade
     FROM contas_receber
     WHERE unidade = '{unidade}'
     GROUP BY cliente, mes, ano, unidade
@@ -104,8 +121,10 @@ LEFT JOIN meses m2
        ON m2.cliente = m1.cliente
       AND (m2.ano * 12 + m2.mes) = (m1.ano * 12 + m1.mes + 1) -- mês seguinte
 WHERE m2.cliente IS NULL
-  AND m1.cliente NOT IN (SELECT cliente FROM mes_atual) and m1.unidade = '{unidade}'
-ORDER BY ano_origem, mes_origem desc;
+  AND m1.cliente NOT IN (SELECT cliente FROM mes_atual)
+  AND m1.unidade = '{unidade}'
+  AND m1.mes = {mes}   -- 🔹 filtro extra por mês
+ORDER BY ano_origem, mes_origem DESC;
 """, engine)
 
 alunos_novos = pd.read_sql(f""" WITH primeira_aparicao AS (
@@ -113,7 +132,11 @@ alunos_novos = pd.read_sql(f""" WITH primeira_aparicao AS (
         UPPER(TRIM(unaccent(cliente))) AS cliente,
         EXTRACT(MONTH FROM data_vencimento) AS mes,
         EXTRACT(YEAR  FROM data_vencimento) AS ano,
-        ROW_NUMBER() OVER (PARTITION BY UPPER(TRIM(unaccent(cliente))) ORDER BY data_vencimento ASC) AS rn, unidade
+        ROW_NUMBER() OVER (
+            PARTITION BY UPPER(TRIM(unaccent(cliente))) 
+            ORDER BY data_vencimento ASC
+        ) AS rn,
+        unidade
     FROM contas_receber
     WHERE valor > 0
 )
@@ -121,10 +144,12 @@ SELECT
     cliente,
     mes AS mes_entrada,
     ano AS ano_entrada,
-	unidade 
+    unidade 
 FROM primeira_aparicao
-WHERE rn = 1 and unidade = '{unidade}'
-ORDER BY ano_entrada, mes_entrada desc;
+WHERE rn = 1 
+  AND unidade = '{unidade}'
+  AND mes = '{mes}'   -- aqui usa mes em vez de mes_entrada
+ORDER BY ano_entrada, mes_entrada DESC;
  """, engine)
 
 alunos_professor = pd.read_sql(f""" SELECT 
@@ -132,12 +157,12 @@ alunos_professor = pd.read_sql(f""" SELECT
     EXTRACT(YEAR FROM data) AS ano,
     EXTRACT(MONTH FROM data) AS mes,
     COUNT(DISTINCT UPPER(TRIM("Cliente"))) AS qtd_alunos, unidade
-FROM atendimentos where unidade = '{unidade}'
+FROM atendimentos where unidade = '{unidade}' AND EXTRACT(MONTH FROM data) = '{mes}'
 GROUP BY 
     "Profissional",
     EXTRACT(YEAR FROM data),
     EXTRACT(MONTH FROM data), unidade
-ORDER BY ano, mes, qtd_alunos DESC;
+ORDER BY ano, mes, qtd_alunos DESC ;
 """, engine)
 
 alunos_atendimentos = pd.read_sql(f"""SELECT 
@@ -147,7 +172,7 @@ alunos_atendimentos = pd.read_sql(f"""SELECT
     COUNT(DISTINCT UPPER(TRIM("Cliente"))) AS qtd_alunos,
                                   unidade
 FROM atendimentos
-                                  where unidade = '{unidade}'
+                                  where unidade = '{unidade}' AND EXTRACT(MONTH FROM data) = '{mes}'
 GROUP BY 
     "Tipo Atendimento",
     EXTRACT(YEAR FROM data),
@@ -161,7 +186,7 @@ alunos_horario = pd.read_sql(f"""SELECT
     EXTRACT(MONTH FROM data) AS mes,
     COUNT(DISTINCT UPPER(TRIM("Cliente"))) AS qtd_alunos,
                              unidade
-FROM atendimentos where unidade = '{unidade}'
+FROM atendimentos where unidade = '{unidade}' AND EXTRACT(MONTH FROM data) =  '{mes}' 
 GROUP BY hora, EXTRACT(YEAR FROM data), EXTRACT(MONTH FROM data), unidade
                             
 ORDER BY ano, mes, qtd_alunos DESC;
