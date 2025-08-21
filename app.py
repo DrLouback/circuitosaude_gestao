@@ -70,6 +70,7 @@ def processar_chatbot(df, unidade):
 def processar_stone(df, unidade):
     try:
         transformer = StoneTransformer(df, unidade)
+       
         input_db(transformer.dataframe(), Stone, conflict_column='id_stone_unidade')
     except Exception as e:
         st.error(f"Erro ao processar Stone: {e}")

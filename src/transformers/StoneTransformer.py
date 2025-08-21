@@ -7,7 +7,7 @@ class StoneTransformer:
         self.renomear_colunas()  # Renomeia para nomes internos
         self.unidade = unidade
         self.add_unidade()
-        self.remove_last_line()
+        
         self.formatar_datas()
         self.add_month_venda()
         self.add_month_vencimento()
@@ -21,8 +21,7 @@ class StoneTransformer:
     def add_unidade(self):
         self.df['unidade'] = self.unidade
 
-    def remove_last_line(self):
-        self.df = self.df[:-1]
+    
 
     def formatar_datas(self):
         for col in [
