@@ -6,6 +6,18 @@ from dotenv import load_dotenv
 import os
 import datetime
 from src.db.db import engine
+from io import BytesIO
+
+@st.cache_data
+def converter_xlsx(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
+def baixar_arquivo(df, mes, tabela):
+    df = converter_xlsx(df)
+    st.download_button("Download", data= df, file_name=f'{tabela}_{mes}.xlsx')
 
 load_dotenv()
 #URL_POST_DEVEDORES = os.getenv(f"URL_POST_DEVEDORES")
@@ -31,33 +43,10 @@ df_teste = pd.DataFrame([{
 
 
 test = df_teste.to_dict(orient="records")
+if devedores_df is not None:
+    baixar_arquivo(devedores_df, 0, 'devedores')
+#bt_enviar = st.button('Enviar cobranças MOK')
 
-bt_enviar = st.button('Enviar cobranças MOK')
-if bt_enviar:
-
-    try:
-        for i in devedores_json:
-        #requests.post(f'{URL_POST_DEVEDORES}', i)
-            if i['unidade'] == 'MOK':
-                print('Post para MOK url', i)
-
-        df = pd.DataFrame({
-        "data_envio": [datetime.datetime.now()],
-        "unidade":[ "MOK"],
-        "status": [True],
-        "erro": [None]
-        })
-        df.to_sql("log_envio_mensagem", con=engine, if_exists="append", index=False)
-
-    except Exception as e:
-            df = pd.DataFrame({
-            "data_envio": [datetime.datetime.now()],
-            "unidade": ["MOK"],
-            "status": [False],
-            "erro": [str(e)]
-            })
-            df.to_sql("log_envio_mensagem", con=engine, if_exists="append", index=False)
-            raise Exception('Erro ao enviar mensagem: Unidade MOK')
     
 log = pd.read_sql('Select * from log_envio_mensagem order by data_envio desc limit 1', engine)
 if log.empty == False:
