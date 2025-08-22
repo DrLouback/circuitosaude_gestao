@@ -1,9 +1,21 @@
 import streamlit as st
 import pandas as pd
 from src.db.db import engine
+from io import BytesIO
 
 unidade = st.selectbox("Unidade", ['MOK', 'Shopping'])
 mes = st.selectbox("Mês", [1,2,3,4,5,6,7,8,9,10,11,12])
+
+@st.cache_data
+def converter_xlsx(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
+def baixar_arquivo(df, mes, tabela):
+    df = converter_xlsx(df)
+    st.download_button("Download", data= df, file_name=f'{tabela}_{mes}.xlsx')
 
 experimentais = pd.read_sql(f"""SELECT DISTINCT 
     "Cliente", 
@@ -23,6 +35,8 @@ AND EXTRACT(MONTH FROM data) = {mes}   -- 🔹 filtro por mês
 ORDER BY data;
 
 """, engine)
+
+
 experimentais_matriculadas = pd.read_sql(f"""WITH primeira_ocorrencia AS (
     SELECT 
         "Cliente",
@@ -195,20 +209,38 @@ ORDER BY ano, mes, qtd_alunos DESC;
 st.write("Lista de experimentais realizadas")
 st.dataframe(experimentais )
 
+if experimentais is not None:
+    baixar_arquivo(experimentais, mes, 'Experimentais')
+
 st.write("Lista de experimentais matriculados")
 st.dataframe(experimentais_matriculadas)
+
+if experimentais_matriculadas is not None:
+    baixar_arquivo(experimentais_matriculadas, mes, 'Experimentais_Matriculadas')
 
 st.write("Diferença de tempo experimental vs matrícula")
 st.dataframe(delay_matricula)
 
+if delay_matricula is not None:
+    baixar_arquivo(delay_matricula, mes, 'Tempo_de_matricula')
+
 st.write("Faltas")
 st.dataframe(faltas)
+
+if faltas is not None:
+    baixar_arquivo(faltas, mes, 'Faltas')
 
 st.write("Ex- alunos")
 st.dataframe(ex_alunos)
 
+if ex_alunos is not None:
+    baixar_arquivo(ex_alunos, mes, 'Ex_alunos')
+
 st.write("Alunos novos")
 st.dataframe(alunos_novos)
+
+if alunos_novos is not None:
+    baixar_arquivo(alunos_novos, mes, 'Alunos novos')
 
 st.write("Alunos por professor")
 st.dataframe(alunos_professor)
