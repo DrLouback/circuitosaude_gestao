@@ -14,7 +14,7 @@ def filtrar_vencidas(df):
     hoje = datetime.now()
     return df[
         (df['data_vencimento'] <= hoje) &
-        (df['data_vencimento'].dt.month == 7)&
+        (df['data_vencimento'].dt.month == 8)&
         (df['valor'] > 0 )
     ]
 
